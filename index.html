@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Безопасный маршрут — игра по безопасности</title>
+    <style>
+        * {
+            user-select: none;
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+            background: linear-gradient(145deg, #1e3a2f, #0a1f18);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 8px;
+        }
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #2c4c3b, #0a1f17);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(3px);
+        }
+        .menu-card {
+            background: #fef0cf;
+            padding: 18px 16px;
+            border-radius: 50px 25px 50px 25px;
+            text-align: center;
+            box-shadow: 0 25px 40px rgba(0,0,0,0.5);
+            border: 4px solid #ffcd94;
+            max-width: 400px;
+            width: 90%;
+            margin: 10px;
+        }
+        .menu-card h1 {
+            font-size: 1.6rem;
+            margin: 0 0 5px 0;
+            color: #b45f2b;
+            text-shadow: 2px 2px 0 #ffdfa5;
+        }
+        .menu-card p {
+            font-size: 0.8rem;
+            color: #3c2a1f;
+            margin: 5px 0;
+        }
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 18px;
+        }
+        .menu-btn {
+            background: #ffb347;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #7a4316;
+            transition: 0.05s linear;
+        }
+        .menu-btn:active {
+            transform: translateY(2px);
+        }
+        .menu-btn.secondary {
+            background: #6c8b5e;
+            box-shadow: 0 3px 0 #3a5530;
+            color: white;
+        }
+        .game-wrapper {
+            display: none;
+            width: 100%;
+            max-width: 100%;
+        }
+        .game-container {
+            background: #f5e7d3;
+            border-radius: 25px;
+            padding: 8px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.4);
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            background-color: #faf0e1;
+            border-radius: 16px;
+            padding: 5px;
+            gap: 4px;
+            border: 2px solid #c9a87b;
+        }
+        .cell {
+            aspect-ratio: 1 / 1;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.55rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #e7cfa1;
+            position: relative;
+            background-size: 28px 28px;
+            background-repeat: no-repeat;
+            background-position: center 20%;
+        }
+        .cell[data-type="start"] { background-color: #c8e6c8; border-left: 4px solid #2e7d32; }
+        .cell[data-type="question"] { background-color: #fff3cf; border-left: 4px solid #f4a100; }
+        .cell[data-type="trap"] { background-color: #ffe0e0; border-left: 4px solid #d32f2f; }
+        .cell[data-type="bonus"] { background-color: #d9f0ff; border-left: 4px solid #2e7eb0; }
+        .cell[data-type="finish"] { background-color: #e8f0c0; border-left: 4px solid gold; }
+        
+        .cell-number {
+            font-size: 0.5rem;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 1px 4px;
+            border-radius: 15px;
+            position: absolute;
+            top: 2px;
+            left: 3px;
+            z-index: 1;
+        }
+        .player-marker {
+            width: 24px;
+            height: 24px;
+            background: url('images/player.png') no-repeat center/contain;
+            position: absolute;
+            bottom: -3px;
+            right: -3px;
+            filter: drop-shadow(1px 1px 2px black);
+            border-radius: 50%;
+            z-index: 2;
+        }
+        .player-marker::before {
+            content: "";
+            font-size: 1rem;
+            position: absolute;
+        }
+        .info-panel {
+            margin-top: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            background: #2c1c0c;
+            padding: 8px 12px;
+            border-radius: 40px;
+            color: #f9e2b7;
+        }
+        .stats {
+            background: #00000066;
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        button {
+            background: #ffcd7e;
+            border: none;
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 3px 0 #b97f2e;
+            transition: 0.05s linear;
+        }
+        button:active {
+            transform: translateY(2px);
+        }
+        .dice-area {
+            background: white;
+            border-radius: 18px;
+            padding: 3px 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .dice-img {
+            width: 40px;
+            height: 40px;
+            background: #ddd;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+        }
+        .message {
+            background: #f2e1b0;
+            padding: 4px 10px;
+            border-radius: 25px;
+            color: #3b2a1f;
+            max-width: 180px;
+            font-size: 0.7rem;
+        }
+        @media (max-width: 550px) {
+            .board { gap: 3px; padding: 4px; }
+            .cell-number { font-size: 0.45rem; }
+            .player-marker { width: 20px; height: 20px; }
+            .dice-img { width: 35px; height: 35px; font-size: 1.5rem; }
+            .stats { font-size: 0.75rem; }
+            button { font-size: 0.75rem; padding: 5px 10px; }
+            .message { font-size: 0.65rem; max-width: 130px; }
+            .cell { background-size: 22px 22px !important; }
+        }
+        @media (max-width: 450px) {
+            .cell { font-size: 0.5rem; background-size: 20px 20px !important; }
+            .board { gap: 2px; }
+            .cell-number { font-size: 0.4rem; top: 1px; left: 2px; }
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .modal-content {
+            background: #fef0cf;
+            padding: 18px;
+            border-radius: 25px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            font-size: 0.85rem;
+        }
+        .rules-list {
+            text-align: left;
+            line-height: 1.4;
+            font-size: 0.8rem;
+        }
+        .close-modal {
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="mainMenu" class="menu-overlay">
+    <div class="menu-card">
+        <h1>🛡️ Обманщики vs Разум</h1>
+        <p>бросай кубик, отвечай на ситуации, избегай опасностей</p>
+        <div class="menu-buttons">
+            <button class="menu-btn" id="startGameBtn">🎲 СТАРТ ИГРЫ</button>
+            <button class="menu-btn secondary" id="rulesBtn">📖 ПРАВИЛА</button>
+        </div>
+    </div>
+</div>
+
+<div id="gameWrapper" class="game-wrapper">
+    <div class="game-container">
+        <div class="board" id="board"></div>
+        <div class="info-panel">
+            <div class="stats">🏆 Очки: <span id="scoreValue">0</span></div>
+            <div class="dice-area">
+                <div class="dice-img" id="diceDisplay">🎲</div>
+                <button id="rollBtn">🎲 БРОСОК</button>
+            </div>
+            <button id="exitToMenuBtn">🏠 В меню</button>
+            <div class="message" id="gameMsg">Бросай кубик!</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const BOARD_SIZE = 40;
+    const FINISH_POS = 40;
+
+    function buildBoard() {
+        let cells = [];
+        for (let i = 1; i <= BOARD_SIZE; i++) {
+            let type = "normal";
+            let action = null;
+            
+            // Клетка СТАРТ (клетка №1)
+            if (i === 1) { type = "start"; }
+            
+            // Вопросы (ситуации)
+            if (i === 3) { type = "question"; action = { 
+                text: "В соцсети незнакомец представляется агентом модельного агентства, просит откровенные фото для портфолио.", 
+                options: ["Пришлю, это шанс!", "Попрошу официальный договор", "Игнорирую и блокирую, скажу родителям"], 
+                correct: 2, reward: 10 
+            };}
+            if (i === 6) { type = "question"; action = { 
+                text: "Группа подростков предлагает прогуляться до места, где будет весело и можно заработать.", 
+                options: ["Пойду с ними", "Скажу, что спешу домой", "Начну спорить"], 
+                correct: 1, reward: 10 
+            };}
+            if (i === 9) { type = "question"; action = { 
+                text: "Закрытая группа просит выполнить задание: украсть мелкое из магазина для вступления.", 
+                options: ["Выполню", "Откажусь и покину группу", "Найду информацию о группе"], 
+                correct: 1, reward: 10 
+            };}
+            if (i === 14) { type = "question"; action = { 
+                text: "На карту пришли деньги от неизвестного, просит вернуть на ДРУГУЮ карту (ошибся реквизитами).", 
+                options: ["Переведу сразу", "Проверю номер отправителя", "Обращусь в поддержку банка"], 
+                correct: 2, reward: 12 
+            };}
+            if (i === 18) { type = "question"; action = { 
+                text: "Реклама: 'Удвой деньги за 24 часа! Вложи 1000р получи 2000р'", 
+                options: ["Вложу", "Поищу отзывы", "Расскажу друзьям"], 
+                correct: 1, reward: 10 
+            };}
+            if (i === 22) { type = "question"; action = { 
+                text: "В друзья добавляется 'знаменитость', признаётся в любви, потом шантажирует.", 
+                options: ["Испугаюсь и сделаю всё", "Заблокирую и сохраню скриншоты", "Договорюсь с ним"], 
+                correct: 1, reward: 12 
+            };}
+            if (i === 27) { type = "question"; action = { 
+                text: "Предлагают работу курьером: забирать посылки и оставлять в других местах, не заглядывать внутрь. Высокая зарплата.", 
+                options: ["Соглашусь", "Откажусь (похоже на преступление)", "Спрошу что внутри"], 
+                correct: 1, reward: 10 
+            };}
+            if (i === 31) { type = "question"; action = { 
+                text: "Новые друзья намекают: 'ты не свой', пока не сделаешь тату с их символом или поступок 'на слабо'.", 
+                options: ["Сделаю", "Скажу нет, найду другую компанию", "Сделаю вид, что соглашусь"], 
+                correct: 1, reward: 10 
+            };}
+            if (i === 35) { type = "question"; action = { 
+                text: "Звонок из 'службы безопасности банка': просят код из СМС и CVV карты.", 
+                options: ["Назову всё", "Перезвоню в банк по номеру на карте", "Задам вопросы сотруднику"], 
+                correct: 1, reward: 12 
+            };}
+            if (i === 38) { type = "question"; action = { 
+                text: "Нашёл бесхозный дорогой смартфон, экран разблокирован, банковские уведомления.", 
+                options: ["Заберу себе", "Позвоню родственникам из контактов", "Отнесу в полицию/находку"], 
+                correct: 2, reward: 15 
+            };}
+            
+            // Ловушки
+            if (i === 12) { type = "trap"; action = { 
+                effect: "moveAndSkip", targetPos: 7, skip: true, msg: "❌ Ты решил заработать легкие деньги. Поймали на мелкой краже. Вернись на клетку 7 и пропусти ход!" 
+            };}
+            if (i === 16) { type = "trap"; action = { 
+                effect: "moveTo", targetPos: 10, msg: "💸 Поверил мошеннику - потерял всё! Вернись на клетку 10." 
+            };}
+            if (i === 25) { type = "trap"; action = { 
+                effect: "moveTo", targetPos: 1, msg: "👮 Тебя втянули в опасную компанию, полиция провела рейд. Вернись на старт!" 
+            };}
+            if (i === 33) { type = "trap"; action = { 
+                effect: "skipTurns", skipCount: 2, msg: "⏳ Общался с подозрительными личностями. Пропусти 2 хода!" 
+            };}
+            
+            // Бонусы
+            if (i === 8) { type = "bonus"; action = { 
+                effect: "extraRoll", msg: "📚 Ты прочитал статью о безопасности! Брось кубик ещё раз!" 
+            };}
+            if (i === 20) { type = "bonus"; action = { 
+                effect: "addScore", addScore: 1, msg: "🤝 Ты поделился информацией о мошенниках! +1 очко." 
+            };}
+            if (i === 30) { type = "bonus"; action = { 
+                effect: "moveForward", forward: 3, msg: "🧭 Нашёл безопасный путь! Переместись на 3 клетки вперёд." 
+            };}
+            if (i === FINISH_POS) type = "finish";
+            
+            cells.push({ id: i, type, action });
+        }
+        return cells;
+    }
+
+    let boardData = buildBoard();
+    let currentPosition = 1;
+    let score = 0;
+    let gameActive = true;
+    let awaitingQuestion = false;
+    let extraRollNextTurn = false;
+    let skipTurns = 0;
+    let gameMessage = "🎲 Бросай кубик!";
+    
+    const boardDiv = document.getElementById("board");
+    const scoreSpan = document.getElementById("scoreValue");
+    const rollBtn = document.getElementById("rollBtn");
+    const exitBtn = document.getElementById("exitToMenuBtn");
+    const msgDiv = document.getElementById("gameMsg");
+    const diceDisplay = document.getElementById("diceDisplay");
+    const mainMenuDiv = document.getElementById("mainMenu");
+    const gameWrapperDiv = document.getElementById("gameWrapper");
+
+    function setDiceImage(roll) {
+        const img = new Image();
+        img.onload = () => { 
+            diceDisplay.style.background = `url('images/dice_${roll}.png') center/contain no-repeat`; 
+            diceDisplay.style.backgroundColor = "white"; 
+            diceDisplay.innerText = ""; 
+        };
+        img.onerror = () => { 
+            diceDisplay.style.background = ""; 
+            diceDisplay.innerText = ["⚀","⚁","⚂","⚃","⚄","⚅"][roll-1]; 
+            diceDisplay.style.fontSize = "1.8rem"; 
+        };
+        img.src = `images/dice_${roll}.png`;
+    }
+
+    function renderBoard() {
+        boardDiv.innerHTML = "";
+        for (let cell of boardData) {
+            const div = document.createElement("div");
+            div.className = "cell";
+            div.setAttribute("data-type", cell.type);
+            
+            // Картинки для разных типов клеток (PNG)
+            let imgMap = { 
+                start: "start.png",
+                question: "question.png", 
+                trap: "trap.png", 
+                bonus: "bonus.png", 
+                finish: "finish.png", 
+                normal: "cell_normal.png" 
+            };
+            let imgFile = imgMap[cell.type];
+            if(imgFile) {
+                div.style.backgroundImage = `url('images/${imgFile}')`;
+                div.style.backgroundSize = "28px 28px";
+                div.style.backgroundRepeat = "no-repeat";
+                div.style.backgroundPosition = "center 22%";
+            }
+            
+            const numSpan = document.createElement("div");
+            numSpan.className = "cell-number";
+            numSpan.innerText = cell.id;
+            div.appendChild(numSpan);
+            
+            // Эмодзи-заглушки (если нет картинок)
+            if (cell.type === "start") {
+                const iconSpan = document.createElement("div");
+               
+                iconSpan.style.fontSize = "1rem";
+                iconSpan.style.marginTop = "18px";
+                iconSpan.style.opacity = "0.5";
+                div.appendChild(iconSpan);
+            } else if (cell.type === "question") {
+                const iconSpan = document.createElement("div");
+                iconSpan.innerText = "";
+                iconSpan.style.fontSize = "1.1rem";
+                iconSpan.style.marginTop = "18px";
+                div.appendChild(iconSpan);
+            } else if (cell.type === "trap") {
+                const iconSpan = document.createElement("div");
+                iconSpan.innerText = "";
+                iconSpan.style.fontSize = "1.1rem";
+                iconSpan.style.marginTop = "18px";
+                div.appendChild(iconSpan);
+            } else if (cell.type === "bonus") {
+                const iconSpan = document.createElement("div");
+                iconSpan.innerText = "";
+                iconSpan.style.fontSize = "1.1rem";
+                iconSpan.style.marginTop = "18px";
+                div.appendChild(iconSpan);
+            } else if (cell.type === "finish") {
+                const iconSpan = document.createElement("div");
+                iconSpan.innerText = "";
+                iconSpan.style.fontSize = "1.1rem";
+                iconSpan.style.marginTop = "18px";
+                div.appendChild(iconSpan);
+            }
+            // normal клетки — пустые, без эмодзи
+            
+            if(cell.id === currentPosition && gameActive) {
+                const playerDiv = document.createElement("div");
+                playerDiv.className = "player-marker";
+                const testImg = new Image();
+                testImg.onload = () => playerDiv.style.background = `url('images/player.png') center/contain no-repeat`;
+                testImg.onerror = () => playerDiv.style.background = "none";
+                testImg.src = "images/player.png";
+                div.appendChild(playerDiv);
+            }
+            boardDiv.appendChild(div);
+        }
+    }
+
+    function updateUI() {
+        scoreSpan.innerText = score;
+        msgDiv.innerText = gameMessage;
+        renderBoard();
+    }
+
+    function askQuestionSync(question, options) {
+        while(true) {
+            let answer = prompt(`${question}\n\n1️⃣ ${options[0]}\n2️⃣ ${options[1]}\n3️⃣ ${options[2]}\n\n👉 Введи номер ответа (1, 2 или 3):`);
+            
+            if(answer === null) {
+                alert("❌ Нужно выбрать вариант ответа! Пожалуйста, введи 1, 2 или 3.");
+                continue;
+            }
+            
+            answer = answer.trim();
+            if(answer === "1" || answer === "2" || answer === "3") {
+                return parseInt(answer) - 1;
+            } else {
+                alert("❌ Неверный ввод! Можно ввести только число 1, 2 или 3. Попробуй ещё раз. Очки не снимаются.");
+            }
+        }
+    }
+
+    function showQuestion(cell) {
+        const q = cell.action;
+        let userChoice = askQuestionSync(q.text, q.options);
+        if(userChoice === q.correct) {
+            score += q.reward;
+            gameMessage = `✅ Верно! +${q.reward} очков!`;
+            alert(`✅ Правильно! +${q.reward} очков.`);
+        } else {
+            score = score - 5;
+            gameMessage = `❌ Неверно! Правильный ответ: ${q.options[q.correct]}. -5 очков.`;
+            alert(`❌ Ошибка! Правильный ответ: ${q.options[q.correct]}. -5 очков.`);
+        }
+        return true;
+    }
+
+    async function applyTrapEffect(cell) {
+        let act = cell.action;
+        gameMessage = act.msg;
+        alert(act.msg);
+        if(act.effect === "moveAndSkip") {
+            currentPosition = act.targetPos;
+            skipTurns = 1;
+            updateUI();
+            return true;
+        }
+        if(act.effect === "moveTo") {
+            currentPosition = act.targetPos;
+            updateUI();
+            return true;
+        }
+        if(act.effect === "skipTurns") {
+            skipTurns = act.skipCount;
+            updateUI();
+            return true;
+        }
+        return false;
+    }
+
+    async function applyBonusEffect(cell) {
+        let act = cell.action;
+        gameMessage = act.msg;
+        alert(act.msg);
+        if(act.effect === "extraRoll") {
+            extraRollNextTurn = true;
+        } else if(act.effect === "addScore") {
+            score += act.addScore;
+        } else if(act.effect === "moveForward") {
+            let newPos = currentPosition + act.forward;
+            if(newPos >= FINISH_POS) newPos = FINISH_POS;
+            currentPosition = newPos;
+            updateUI();
+            if(currentPosition === FINISH_POS) finishGame();
+            return true;
+        }
+        updateUI();
+        return false;
+    }
+
+    async function movePlayer(steps) {
+        if(!gameActive) return false;
+        let newPos = currentPosition + steps;
+        if(newPos >= FINISH_POS) {
+            currentPosition = FINISH_POS;
+            finishGame();
+            return true;
+        }
+        currentPosition = newPos;
+        let cell = boardData[currentPosition-1];
+        
+        if(cell.type === "question") {
+            awaitingQuestion = true;
+            showQuestion(cell);
+            awaitingQuestion = false;
+            updateUI();
+            return true;
+        }
+        if(cell.type === "trap") {
+            await applyTrapEffect(cell);
+            updateUI();
+            return true;
+        }
+        if(cell.type === "bonus") {
+            await applyBonusEffect(cell);
+            finishTurnAfterMove();
+            return true;
+        }
+        finishTurnAfterMove();
+        return true;
+    }
+
+    function finishTurnAfterMove() {
+        updateUI();
+    }
+
+    async function handleDiceRoll() {
+        if(awaitingQuestion) { alert("📢 Сначала ответь на вопрос!"); return; }
+        if(!gameActive) { alert("Игра окончена, выйди в меню и начни заново."); return; }
+        if(skipTurns > 0) {
+            alert(`⏸️ Пропуск хода! Осталось пропусков: ${skipTurns}`);
+            skipTurns--;
+            updateUI();
+            return;
+        }
+        let roll = Math.floor(Math.random()*6)+1;
+        setDiceImage(roll);
+        alert(`🎲 Выпало: ${roll}`);
+        await movePlayer(roll);
+        
+        if(extraRollNextTurn && !awaitingQuestion && gameActive && currentPosition !== FINISH_POS) {
+            extraRollNextTurn = false;
+            alert("✨ БОНУС: дополнительный бросок!");
+            let extraRoll = Math.floor(Math.random()*6)+1;
+            setDiceImage(extraRoll);
+            alert(`🎲 Бонусный бросок: ${extraRoll}`);
+            await movePlayer(extraRoll);
+        }
+        updateUI();
+        if(currentPosition === FINISH_POS) finishGame();
+    }
+
+    function finishGame() {
+        gameActive = false;
+        if(score < 0) {
+            msgDiv.innerText = `😞 ФИНИШ! Очки: ${score}. ПОЗОР! Ты принял кучу неправильных решений. Играй лучше в следующий раз! 😞`;
+            alert(`😤😤😤 ФИНИШ с ${score} очками! Это позор! Ты вообще слушал вопросы? Школа безопасности не для тебя... Иди учи матчасть! 😤😤😤`);
+        } else {
+            msgDiv.innerText = `🏆 ПОБЕДА! Финиш! Очки: ${score}. Молодец! 🏆`;
+            alert(`🏆 Поздравляю! Ты финишировал с ${score} очками. Отличная работа! 🏆`);
+        }
+        renderBoard();
+    }
+
+    function resetGameState() {
+        boardData = buildBoard();
+        currentPosition = 1;
+        score = 0;
+        gameActive = true;
+        awaitingQuestion = false;
+        extraRollNextTurn = false;
+        skipTurns = 0;
+        gameMessage = "Новая игра! Бросай кубик.";
+        updateUI();
+        setDiceImage(1);
+    }
+
+    function exitToMenu() {
+        if(confirm("❓ Вы уверены, что хотите выйти в главное меню?\nТекущий прогресс будет сброшен.")) {
+            resetGameState();
+            mainMenuDiv.style.display = "flex";
+            gameWrapperDiv.style.display = "none";
+        }
+    }
+
+    function showRules() {
+        const rulesModal = document.createElement("div");
+        rulesModal.className = "modal-overlay";
+        rulesModal.innerHTML = `
+            <div class="modal-content">
+                <h2>📜 ПРАВИЛА</h2>
+                <div class="rules-list">
+                    <p>🎲 Дойди до финиша (клетка 40).</p>
+                    <p>🎲 На вопросы отвечай ТОЛЬКО 1,2,3.</p>
+                    <p>⚠️ Ловушки отбрасывают назад.</p>
+                    <p>✨ Бонусы дают доп. ход, очки или движение вперёд.</p>
+                    <p><strong>😡 Если финишируешь с минусом — получишь нагоняй!</strong></p>
+                </div>
+                <button class="close-modal">Закрыть</button>
+            </div>
+        `;
+        document.body.appendChild(rulesModal);
+        rulesModal.querySelector(".close-modal").onclick = () => rulesModal.remove();
+        rulesModal.onclick = (e) => { if(e.target === rulesModal) rulesModal.remove(); };
+    }
+
+    document.getElementById("startGameBtn").addEventListener("click", () => {
+        resetGameState();
+        mainMenuDiv.style.display = "none";
+        gameWrapperDiv.style.display = "block";
+    });
+    document.getElementById("rulesBtn").addEventListener("click", showRules);
+    exitBtn.addEventListener("click", exitToMenu);
+    rollBtn.addEventListener("click", handleDiceRoll);
+    
+    resetGameState();
+    mainMenuDiv.style.display = "flex";
+    gameWrapperDiv.style.display = "none";
+</script>
+</body>
+</html>
